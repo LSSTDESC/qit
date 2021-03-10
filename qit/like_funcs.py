@@ -4,10 +4,6 @@ import numpy as np
 
 from functools import partial
 
-from qp.ensemble import Ensemble
-from qp.hist_pdf import hist
-from qp.interp_pdf import interp
-
 
 def get_posterior_grid(ens, vals, prior=None):
     """Evaluate all of the PFDs in an ensemble at a set of values, and optionally multiply them over by a prior
@@ -18,7 +14,7 @@ def get_posterior_grid(ens, vals, prior=None):
         The ensemble
     vals : array_like (n)
         The values at which to evaluate the ensemble PDFs and the prior
-    prior : `qp.Ensemble` or `None`
+    priors : `qp.Ensemble` or `list` or `None`
         The prior, using None will result in no multiplication, equivalent to a flat prior
 
     Returns
@@ -28,28 +24,13 @@ def get_posterior_grid(ens, vals, prior=None):
     """
     post_grid = ens.pdf(vals)
     if prior is not None:
-        prior_vals = np.squeeze(prior.pdf(vals))
+        prior_vals = prior.pdf(vals) 
         post_grid = post_grid * prior_vals
     return post_grid
 
 
-def make_ensemble_for_posterior_hist(post_grid, z_grid, z_meas_bin):
-    cdfs = post_grid[z_meas_bin].cumsum(axis=1)
-    pdfs = cdfs[:,1:] - cdfs[:,:-1]
-    ens = Ensemble(hist, data=dict(bins=z_grid, pdfs=pdfs))
-    vals = ens.pdf(z_grid)
-    stack = vals.mean(axis=0)
-    return dict(ens=ens, vals=vals, stack=stack)
-
-
-def make_ensemble_for_posterior_interp(post_grid, z_grid, z_meas_bin):
-    ens = Ensemble(interp, data=dict(xvals=z_grid, yvals=post_grid[z_meas_bin]))
-    vals = ens.pdf(z_grid)
-    stack = vals.mean(axis=0)
-    return dict(ens=ens, vals=vals, stack=stack)
-
-
 def log_hyper_like(params, ensemble, model, implicit_prior, grid):
+    """ Evalute the likelihood for a set of hyper-parameters """
     npdf = ensemble.npdf
     widths = grid[1:] - grid[:-1]
     cents = 0.5*(grid[1:] + grid[:-1])
@@ -64,10 +45,13 @@ def log_hyper_like(params, ensemble, model, implicit_prior, grid):
 
 
 def make_log_hyper_obj_func(ensemble, model, implicit_prior, grid):
+    """ Make an objective function to use in miniizing the likelihood of a set of hyper-parameters """
     obj_func = partial(log_hyper_like, ensemble=ensemble, model=model, implicit_prior=implicit_prior, grid=grid)
     return obj_func
 
+
 def model_counts(params, model, like_eval, like_grid, model_grid, cts_grid):
+    """ Compute the number of counts expected in a set bins """
     pdfs = np.exp(np.expand_dims(np.array(params), 0))
     norm = pdfs.sum()
     model.update_objdata(dict(pdfs=pdfs))
@@ -77,13 +61,16 @@ def model_counts(params, model, like_eval, like_grid, model_grid, cts_grid):
     return like_hist
 
 def loglike_poisson(data_cts, model_cts):
+    """ Return the Poisson likelihood given data and a model """
     return np.sum(model_cts) - np.sum(data_cts*np.log(model_cts))
 
 def binned_loglike(params, model, data_cts, like_eval, like_grid, model_grid, cts_grid):
+    """ Return the Poisson log-likelihood given data, a model, model parameters """
     model_cts = model_counts(params, model, like_eval, like_grid, model_grid, cts_grid)
     return loglike_poisson(data_cts, model_cts)
 
 def make_binnned_loglike_obj_func(model, data_cts, like_eval, like_grid, model_grid, cts_grid):
+    """ Make an objective function to use in miniizing the likelihood of a set of hyper-parameters """
     obj_func = partial(binned_loglike, model=model, data_cts=data_cts, like_eval=like_eval,
                            like_grid=like_grid, model_grid=model_grid, cts_grid=cts_grid)
     return obj_func

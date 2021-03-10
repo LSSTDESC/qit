@@ -10,5 +10,8 @@ except Exception as message: #pragma: no cover
 
 from .axis import Axis
 from .estimator import Estimator
+from .posterior import Posterior
+from .binned_like import BinnedLike, Likelihood
 
 from . import like_funcs
+from . import plotting

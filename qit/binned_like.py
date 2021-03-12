@@ -85,23 +85,22 @@ class Likelihood:
         self._model = model
         self._posterior = posterior
         self._npdf = self._posterior._ensemble.npdf
-        self._widths = grid[1:] - grid[:-1]
-        self._cents = 0.5*(grid[1:] + grid[:-1])
-        self._post_vals = self._posterior._ensemble.pdf(self._cents)
+        self._grid = grid
+        self._post_vals = self._posterior._ensemble.pdf(self._grid)
         if self._posterior._priors is not None:
-            self._prior_vals = self._posterior._priors[0].pdf(self._cents)
+            self._prior_vals = self._posterior._priors[0].pdf(self._grid)
         else:
             self._prior_vals = 1.
             
     def model_vals(self, params):
         self._model.update_objdata(dict(pdfs=np.exp(np.expand_dims(np.array(params), 0))))
-        return self._npdf*self._model.pdf(self._cents)
+        return self._model.pdf(self._grid)
 
     def loglike(self, params):
         mv = self.model_vals(params)
         prior_term = mv / self._prior_vals
-        integrand = self._post_vals * prior_term * self._widths
-        lnlvals = np.log(np.sum(integrand, axis=1))
+        integrand = self._post_vals * self.model_vals(params) / self._prior_vals
+        lnlvals = np.log(np.trapz(integrand, self._grid))
         return -1*np.sum(lnlvals)
 
     def __call__(self, params):

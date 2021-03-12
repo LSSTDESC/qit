@@ -86,6 +86,7 @@ class Likelihood:
         self._posterior = posterior
         self._npdf = self._posterior._ensemble.npdf
         self._grid = grid
+        self._nmodel = 0.
         self._post_vals = self._posterior._ensemble.pdf(self._grid)
         if self._posterior._priors is not None:
             self._prior_vals = self._posterior._priors[0].pdf(self._grid)
@@ -93,6 +94,7 @@ class Likelihood:
             self._prior_vals = 1.
             
     def model_vals(self, params):
+        self._nmodel = np.sum(np.exp(params))/(self._grid[-1] - self._grid[0])
         self._model.update_objdata(dict(pdfs=np.exp(np.expand_dims(np.array(params), 0))))
         return self._model.pdf(self._grid)
 
@@ -101,7 +103,9 @@ class Likelihood:
         prior_term = mv / self._prior_vals
         integrand = self._post_vals * self.model_vals(params) / self._prior_vals
         lnlvals = np.log(np.trapz(integrand, self._grid))
-        return -1*np.sum(lnlvals)
+        # "Extended" term to constain the normalizaiton of the model
+        ext_term = ((self._nmodel - self._npdf)**2)/(self._npdf)
+        return -1*np.sum(lnlvals) + ext_term
 
     def __call__(self, params):
         """ Return the Poisson log-likelihood given data, a model, model parameters """

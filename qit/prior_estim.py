@@ -1,15 +1,15 @@
-"""This module implements a binned Poisson likelihood
+"""This module implements tools to estimate the Prior used in the chippr example
 """
 
 import numpy as np
 
 from .like_funcs import loglike_poisson
 
-class BinnedLike:
-    """Implementation of a BinnedLikelihood"""
-    
-    def __init__(self, model, data_hist, estimator, like_grid, model_grid):
-        """ C'tor define the binned likelihood 
+class BinnedPriorEstimation:
+    """Implementation of prior estimation by forward folding the number of counts per bin in the observed data space """
+
+    def __init__(self, model, data_hist, likelihood, like_grid, model_grid):
+        """ C'tor define the binned likelihood
 
         Parameters
         ----------
@@ -17,24 +17,24 @@ class BinnedLike:
             The model of the data
         data_hist : `np.histogram`
             The binned counts data
-        estimator : `qit.estimator`
-            The estimator 
-        like_grid : `np.array` 
+        likelihood : `qit.BinnedEnsemble`
+            The likelihood estimator
+        like_grid : `np.array`
             The grid on which to evaluate the likelihood
         model_grid : `np.array`
             The grid on which to evaluate the model
         """
         self._model = model
         self._data_hist = data_hist
-        self._estimator = estimator
+        self._likelihood = likelihood
         self._like_grid = like_grid
         self._model_grid = model_grid
-        self._like_bins, self._like_mask = self._estimator.get_indices(self._model_grid)
-        self._like_eval = self._estimator._ensemble.pdf(self._like_grid)[self._like_bins[self._like_mask]]
+        self._like_bins, self._like_mask = self._likelihood.get_indices(self._model_grid)
+        self._like_eval = self._likelihood.pdf(self._like_grid)[self._like_bins[self._like_mask]]
 
     def model_counts(self, params):
-        """ Evaluate the model counts 
-        
+        """ Evaluate the model counts
+
         Parameters
         ----------
         params : `np.array`
@@ -43,7 +43,7 @@ class BinnedLike:
         Returns
         -------
         counts : `np.array`
-            The model counts        
+            The model counts
         """
         pdfs = np.exp(np.expand_dims(np.array(params), 0))
         norm = pdfs.sum()
@@ -76,31 +76,59 @@ class BinnedLike:
 
 
 
-class Likelihood:
+class PriorEstimation:
     """Implementation of a Likelihood estimation"""
-    
+
     def __init__(self, model, posterior, grid):
         """
         """
         self._model = model
         self._posterior = posterior
-        self._npdf = self._posterior._ensemble.npdf
+        self._npdf = self._posterior.npdf
         self._grid = grid
         self._nmodel = 0.
-        self._post_vals = self._posterior._ensemble.pdf(self._grid)
+        self._post_vals = self._posterior.pdf(self._grid)
         if self._posterior._priors is not None:
             self._prior_vals = self._posterior._priors[0].pdf(self._grid)
         else:
             self._prior_vals = 1.
-            
+
     def model_vals(self, params):
+        """ Evaluate the model PDF values for the data
+
+        Parameters
+        ----------
+        params : `np.array`
+            The input parameters
+
+        Returns
+        -------
+        values : `np.array`
+            The model pdf values
+        """
         self._nmodel = np.sum(np.exp(params))/(self._grid[-1] - self._grid[0])
         self._model.update_objdata(dict(pdfs=np.exp(np.expand_dims(np.array(params), 0))))
         return self._model.pdf(self._grid)
 
     def loglike(self, params):
-        mv = self.model_vals(params)
-        prior_term = mv / self._prior_vals
+        """ Return the extended log-likelihood given data, a model, model parameters
+
+        Parameters
+        ----------
+        params : `np.array`
+            The input parameters
+
+        Returns
+        -------
+        loglike : `float`
+            The log-likelhood
+
+        Notes
+        -----
+        To keep overall sum of the parameters constrained, we add an "extended likelihood" term
+        that consists of the Poisson likelihood term to over the actual number of counts observed,
+        given the model parameters
+        """
         integrand = self._post_vals * self.model_vals(params) / self._prior_vals
         lnlvals = np.log(np.trapz(integrand, self._grid))
         # "Extended" term to constain the normalizaiton of the model

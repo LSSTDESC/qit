@@ -9,9 +9,9 @@ except Exception as message: #pragma: no cover
     print(message)
 
 from .axis import Axis
-from .estimator import Estimator
+from .binned_ensemble import BinnedEnsemble
 from .posterior import Posterior
-from .binned_like import BinnedLike, Likelihood
+from .prior_estim import BinnedPriorEstimation, PriorEstimation
 
 from . import like_funcs
 from . import plotting

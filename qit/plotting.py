@@ -1,7 +1,6 @@
 """Functions to plot PDFs"""
 
-
-import numpy as np
+from qp.plotting import get_axes_and_xlims
 
 def plot_2d_like(post_grid, **kwargs):
     """Utility function to plot the posteriors for a grid"""

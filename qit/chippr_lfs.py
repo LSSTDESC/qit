@@ -5,32 +5,32 @@ import numpy as np
 
 from .like_funcs import loglike_poisson
 
-class BinnedPriorEstimation:
+class CHIPPR_count_LF:
     """Implementation of prior estimation by forward folding the number of counts per bin in the observed data space """
 
-    def __init__(self, model, data_hist, likelihood, like_grid, model_grid):
+    def __init__(self, redshift_distribution, data_hist, joint_probspace, discretized_data, discretized_redshift): #pylint: disable=too-many-arguments
         """ C'tor define the binned likelihood
 
         Parameters
         ----------
-        model : `qp.ensemble`
+        redshift_distribution : `qp.ensemble`
             The model of the data
         data_hist : `np.histogram`
             The binned counts data
-        likelihood : `qit.BinnedEnsemble`
+        joint_probspace : `qit.BinnedEnsemble`
             The likelihood estimator
-        like_grid : `np.array`
+        discretized_data : `np.array`
             The grid on which to evaluate the likelihood
-        model_grid : `np.array`
+        discretized_redshift : `np.array`
             The grid on which to evaluate the model
         """
-        self._model = model
+        self._redshift_distribution = redshift_distribution
         self._data_hist = data_hist
-        self._likelihood = likelihood
-        self._like_grid = like_grid
-        self._model_grid = model_grid
-        self._like_bins, self._like_mask = self._likelihood.get_indices(self._model_grid)
-        self._like_eval = self._likelihood.pdf(self._like_grid)[self._like_bins[self._like_mask]]
+        self._joint_probspace = joint_probspace
+        self._discretized_data = discretized_data
+        self._discretized_redshift = discretized_redshift
+        self._like_bins, self._like_mask = self._joint_probspace.get_indices(self._discretized_redshift)
+        self._like_eval = self._joint_probspace.pdf(self._discretized_data)[self._like_bins[self._like_mask]]
 
     def model_counts(self, params):
         """ Evaluate the model counts
@@ -47,9 +47,9 @@ class BinnedPriorEstimation:
         """
         pdfs = np.exp(np.expand_dims(np.array(params), 0))
         norm = pdfs.sum()
-        self._model.update_objdata(dict(pdfs=pdfs))
-        model_wts = np.squeeze(self._model.pdf(self._model_grid))[self._like_mask]
-        like_hist = np.histogram(self._like_grid, bins=self._data_hist[1], weights=np.matmul(model_wts, self._like_eval))[0]
+        self._redshift_distribution.update_objdata(dict(pdfs=pdfs))
+        model_wts = np.squeeze(self._redshift_distribution.pdf(self._discretized_redshift))[self._like_mask]
+        like_hist = np.histogram(self._discretized_data, bins=self._data_hist[1], weights=np.matmul(model_wts, self._like_eval))[0]
         like_hist *= norm/like_hist.sum()
         return like_hist
 
@@ -76,20 +76,20 @@ class BinnedPriorEstimation:
 
 
 
-class PriorEstimation:
+class CHIPPR_LF:
     """Implementation of a Likelihood estimation"""
 
-    def __init__(self, model, posterior, grid):
+    def __init__(self, redshift_distribution, posterior_ensemble, discretized_redshift):
         """
         """
-        self._model = model
-        self._posterior = posterior
-        self._npdf = self._posterior.npdf
-        self._grid = grid
+        self._redshift_distribution = redshift_distribution
+        self._posterior_ensemble = posterior_ensemble
+        self._npdf = self._posterior_ensemble.npdf
+        self._discretized_redshift = discretized_redshift
         self._nmodel = 0.
-        self._post_vals = self._posterior.pdf(self._grid)
-        if self._posterior._priors is not None:
-            self._prior_vals = self._posterior._priors[0].pdf(self._grid)
+        self._post_vals = self._posterior_ensemble.pdf(self._discretized_redshift)
+        if self._posterior_ensemble._priors is not None:
+            self._prior_vals = self._posterior_ensemble._priors[0].pdf(self._discretized_redshift)
         else:
             self._prior_vals = 1.
 
@@ -106,9 +106,9 @@ class PriorEstimation:
         values : `np.array`
             The model pdf values
         """
-        self._nmodel = np.sum(np.exp(params))/(self._grid[-1] - self._grid[0])
-        self._model.update_objdata(dict(pdfs=np.exp(np.expand_dims(np.array(params), 0))))
-        return self._model.pdf(self._grid)
+        self._nmodel = np.sum(np.exp(params))/(self._discretized_redshift[-1] - self._discretized_redshift[0])
+        self._redshift_distribution.update_objdata(dict(pdfs=np.exp(np.expand_dims(np.array(params), 0))))
+        return self._redshift_distribution.pdf(self._discretized_redshift)
 
     def loglike(self, params):
         """ Return the extended log-likelihood given data, a model, model parameters
@@ -130,7 +130,7 @@ class PriorEstimation:
         given the model parameters
         """
         integrand = self._post_vals * self.model_vals(params) / self._prior_vals
-        lnlvals = np.log(np.trapz(integrand, self._grid))
+        lnlvals = np.log(np.trapz(integrand, self._discretized_redshift))
         # "Extended" term to constain the normalizaiton of the model
         ext_term = ((self._nmodel - self._npdf)**2)/(self._npdf)
         return -1*np.sum(lnlvals) + ext_term

@@ -9,9 +9,9 @@ except Exception as message: #pragma: no cover
     print(message)
 
 from .axis import Axis
-from .binned_ensemble import BinnedEnsemble
+from .nd_ensemble import NDEnsemble
 from .posterior import Posterior
-from .prior_estim import BinnedPriorEstimation, PriorEstimation
+from .chippr_lfs import CHIPPR_count_LF, CHIPPR_LF
 
 from . import like_funcs
 from . import plotting

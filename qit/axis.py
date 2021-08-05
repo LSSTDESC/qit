@@ -4,12 +4,12 @@
 import sys
 import numpy as np
 
-from qp.utils import get_bin_indices, get_indices_and_interpolation_factors
+from qp.utils import get_bin_indices #, get_indices_and_interpolation_factors
 
 class Axis:
 
     def __init__(self, bins):
-        if len(np.shape(bins)) != 1:
+        if len(np.shape(bins)) != 1:  #pragma: no cover
             raise ValueError("Only 1D inputs can be used to define axes, got %s" % np.shape(self._bins))
         self._bins = bins
         self._nbins = self._bins.size - 1
@@ -25,6 +25,7 @@ class Axis:
     def get_indices(self, vals):
         return get_bin_indices(self.bins, vals)        
 
-    def get_indices_and_interpolation_factors(self, vals):
-        return get_indices_and_interpolation_factors(self.bins, vals)
+    def get_indices_and_interpolation_factors(self, vals):  #pragma: no cover
+        raise NotImplementedError() 
+        #return get_indices_and_interpolation_factors(self.bins, vals)
 

@@ -4,7 +4,7 @@
 import sys
 import numpy as np
 
-from qp.utils import get_bin_indices, get_indices_and_interpolation_factors
+from qp.utils import get_bin_indices #, get_indices_and_interpolation_factors
 from qp.ensemble import Ensemble
 from qp.hist_pdf import hist
 from qp.interp_pdf import interp
@@ -20,23 +20,23 @@ class Estimator:
         self._naxes = len(self._axes)
         self._ens_shape = ensemble.shape
         self._ensemble = ensemble
-        if self._axes_shape != list(self._ens_shape):
+        if self._axes_shape != list(self._ens_shape):  #pragma: no cover
             raise ValueError("Axes shape does not match Ensemble shape %s != %s" % (self._axes_shape, self._ens_shape))
 
     def get_indices(self, x_loc):        
         if len(x_loc.shape) == 1:
-            if self._naxes != 1:
+            if self._naxes != 1:  #pragma: no cover
                 raise ValueError("Number of input vectors must equal number of axes 1 != %i" % (self._naxes))
             return self._axes[0].get_indices(x_loc)
-        if len(x_loc) != self._naxes:
+        if len(x_loc) != self._naxes:  #pragma: no cove
             raise ValueError("Number of input vectors must equal number of axes %i != %i" % (len(x_loc), self._naxes))
-        indices = []
-        masks = []
-        for x_loc_ in x_loc:
+        indices = []  #pragma: no cover
+        masks = []  #pragma: no cover
+        for x_loc_ in x_loc:  #pragma: no cover
             idx_, mask_ = ax.get_indices(x_loc_)
             indices.append(idx_)
             masks.append(mask_)
-        return np.vstack(indices), np.vstack(masks)
+        return np.vstack(indices), np.vstack(masks)  #pragma: no cover
     
 
     def flat_posterior(self, x_loc, axis=0):

@@ -33,7 +33,7 @@ def get_posterior_grid(ens, vals, prior=None):
     return post_grid
 
 
-def make_ensemble_for_posterior_hist(post_grid, z_grid, z_meas_bin):
+def make_ensemble_for_posterior_hist(post_grid, z_grid, z_meas_bin):  #pragma: no cover
     cdfs = post_grid[z_meas_bin].cumsum(axis=1)
     pdfs = cdfs[:,1:] - cdfs[:,:-1]
     ens = Ensemble(hist, data=dict(bins=z_grid, pdfs=pdfs))

@@ -1,10 +1,7 @@
 from setuptools import setup
 
-import qit
-
 setup(
     name="qit",
-    version=qit.__version__,
     author="Alex Malz, Eric Charles",
     author_email="aimalz@nyu.edu, echarles@slac.stanford.edu",
     url = "https://github.com/LSSTDESC/qit",
@@ -12,6 +9,7 @@ setup(
     description="qp-based inference toolkit",
     long_description=open("README.md").read(),
     package_data={"": ["README.md", "LICENSE"]},
+    use_scm_version={"write_to":"qit/_version.py"},
     include_package_data=True,
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -21,5 +19,6 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         ],
-    install_requires=["qp"]
+    install_requires=["qp",
+                      "setuptools_scm"]
 )

@@ -1,4 +1,4 @@
-"""High-level functions for the qp package"""
+"""High-level functions for the qit package"""
 
 import numpy as np
 
@@ -34,6 +34,28 @@ def get_posterior_grid(ens, vals, prior=None):
 
 
 def make_ensemble_for_posterior_hist(post_grid, z_grid, z_meas_bin):  #pragma: no cover
+    """Construct an ensemble using the qp.hist representation
+    that represents a posterior distibution
+
+    Parameters
+    ----------
+    post_grid : array_like (npdf, nvals)
+        The posterior values
+    z_grid : array_like (nvals)
+        The values at which to evaluate the ensemble PDFs and the prior
+    z_meas_bin : array_like (n+1)
+        The prior, using None will result in no multiplication, equivalent to a flat prior
+
+    Returns
+    -------
+    ens : `qp.Ensemble`
+        The ensemble
+    vals : array_like (npdf, n)
+        The posterior grid values
+    stack : array_like (npdf)
+        The posterior means
+    """
+
     cdfs = post_grid[z_meas_bin].cumsum(axis=1)
     pdfs = cdfs[:,1:] - cdfs[:,:-1]
     ens = Ensemble(hist, data=dict(bins=z_grid, pdfs=pdfs))
@@ -43,6 +65,28 @@ def make_ensemble_for_posterior_hist(post_grid, z_grid, z_meas_bin):  #pragma: n
 
 
 def make_ensemble_for_posterior_interp(post_grid, z_grid, z_meas_bin):
+    """Construct an ensemble using the qp.interp representation
+    that represents a posterior distibution
+
+    Parameters
+    ----------
+    post_grid : array_like (npdf, nvals)
+        The posterior values
+    z_grid : array_like (nvals)
+        The values at which to evaluate the ensemble PDFs and the prior
+    z_meas_bin : array_like (n+1)
+        The prior, using None will result in no multiplication, equivalent to a flat prior
+
+    Returns
+    -------
+    ens : `qp.Ensemble`
+        The ensemble
+    vals : array_like (npdf, n)
+        The posterior grid values
+    stack : array_like (npdf)
+        The posterior means
+    """
+
     ens = Ensemble(interp, data=dict(xvals=z_grid, yvals=post_grid[z_meas_bin]))
     vals = ens.pdf(z_grid)
     stack = vals.mean(axis=0)
@@ -50,6 +94,26 @@ def make_ensemble_for_posterior_interp(post_grid, z_grid, z_meas_bin):
 
 
 def log_hyper_like(params, ensemble, model, implicit_prior, grid):
+    """ Construct the log-likelihood for the hyperparameters
+
+    Parameters
+    ----------
+    params : array_like (npar)
+        The input parameters
+    ensemble : `qp.Ensemble`
+        The ensemble representing the posteriors
+    model : `qp.Ensemble`
+        The single-pdf ensemble used to represent the model
+    implicit_prior :  `qp.Ensemble`
+        The single-pdf ensemble used to represent the implicit prior
+    grid : array_like (npar+1)
+        The grid used to define the hyper-parameters
+
+    Returns
+    -------
+    lnl : float
+        The log-likelihood for the hyperparameters
+    """
     npdf = ensemble.npdf
     widths = grid[1:] - grid[:-1]
     cents = 0.5*(grid[1:] + grid[:-1])
@@ -64,10 +128,52 @@ def log_hyper_like(params, ensemble, model, implicit_prior, grid):
 
 
 def make_log_hyper_obj_func(ensemble, model, implicit_prior, grid):
+    """ Build and return an objective function that can by
+    used to optimize the hyperparameters
+
+    Parameters
+    ----------
+    ensemble : `qp.Ensemble`
+        The ensemble representing the posteriors
+    model : `qp.Ensemble`
+        The single-pdf ensemble used to represent the model
+    implicit_prior :  `qp.Ensemble`
+        The single-pdf ensemble used to represent the implicit prior
+    grid : array_like (npar+1)
+        The grid used to define the hyper-parameters
+
+    Returns
+    -------
+    obj_func : function
+        The objective function, which takes paramters and returns a float
+    """
     obj_func = partial(log_hyper_like, ensemble=ensemble, model=model, implicit_prior=implicit_prior, grid=grid)
     return obj_func
 
 def model_counts(params, model, like_eval, like_grid, model_grid, cts_grid):
+    """ Construct the binned-mode model for the number of objects per bin
+
+    Parameters
+    ----------
+    params : array_like (npar)
+        The input parameters
+    model : `qp.Ensemble`
+        The single-pdf ensemble used to represent the model
+    like_eval : array_like
+        FIXME
+    like_grid : array_like
+        FIXME
+    model_grid : array_like
+        The grid used to define the model bins
+    cts_grid : array_like
+        The grid used to define the counts grid
+
+    Returns
+    -------
+    lnl : float
+        The log-likelihood for the hyperparameters
+    """
+
     pdfs = np.exp(np.expand_dims(np.array(params), 0))
     norm = pdfs.sum()
     model.update_objdata(dict(pdfs=pdfs))
@@ -76,14 +182,79 @@ def model_counts(params, model, like_eval, like_grid, model_grid, cts_grid):
     like_hist *= norm/like_hist.sum()
     return like_hist
 
+
 def loglike_poisson(data_cts, model_cts):
+    """ Return the poisson log-likelihood
+
+    Parameters
+    ----------
+    data_cts : array_like
+        Number of counts observed per bin
+    model_cts : array_like
+        Number of coutns predicted per bin
+
+    Returns
+    -------
+    lnl : float
+        The poisson log-likelihood
+    """
     return np.sum(model_cts) - np.sum(data_cts*np.log(model_cts))
 
+
 def binned_loglike(params, model, data_cts, like_eval, like_grid, model_grid, cts_grid):
+    """ Construct the binned-mode log-likelihood for the hyperparameters
+
+    Parameters
+    ----------
+    params : array_like (npar)
+        The input parameters
+    model : `qp.Ensemble`
+        The single-pdf ensemble used to represent the model
+    data_cts : array_like (npar)
+        The number of counts observed per bin
+    like_eval : array_like
+        FIXME
+    like_grid : array_like
+        FIXME
+    model_grid : array_like
+        The grid used to define the model bins
+    cts_grid : array_like
+        The grid used to define the counts grid
+
+    Returns
+    -------
+    lnl : float
+        The log-likelihood for the hyperparameters
+    """
     model_cts = model_counts(params, model, like_eval, like_grid, model_grid, cts_grid)
     return loglike_poisson(data_cts, model_cts)
 
+
 def make_binnned_loglike_obj_func(model, data_cts, like_eval, like_grid, model_grid, cts_grid):
+    """ Build and return an objective function that can by
+    used to optimize the hyperparameters
+
+    Parameters
+    ----------
+    model : `qp.Ensemble`
+        The single-pdf ensemble used to represent the model
+    data_cts : array_like (npar)
+        The number of counts observed per bin
+    like_eval : array_like
+        FIXME
+    like_grid : array_like
+        FIXME
+    model_grid : array_like
+        The grid used to define the model bins
+    cts_grid : array_like
+        The grid used to define the counts grid
+
+    Returns
+    -------
+    obj_func : function
+        The objective function, which takes paramters and returns a float
+    """
+
     obj_func = partial(binned_loglike, model=model, data_cts=data_cts, like_eval=like_eval,
                            like_grid=like_grid, model_grid=model_grid, cts_grid=cts_grid)
     return obj_func

@@ -43,6 +43,8 @@ class BaseTestCase(unittest.TestCase):
         z_centers = qp.utils.edge_to_center(z_bins)
         z_widths = 0.2 * np.ones(N_EST_BINS)
         likelihood = qp.Ensemble(qp.stats.norm, data=dict(loc=np.expand_dims(z_centers, -1), scale=np.expand_dims(z_widths, -1)))
+        like_estim = qit.Estimator([z_bins], likelihood)
+
         grid_edge = np.linspace(Z_OBS_MIN, Z_OBS_MAX, N_OBS_BINS+1)
         grid_cent = qp.utils.edge_to_center(grid_edge)
         p_grid = likelihood.pdf(grid_cent)

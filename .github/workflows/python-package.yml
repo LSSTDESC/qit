@@ -5,9 +5,9 @@ name: Python package
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -31,14 +31,14 @@ jobs:
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        pylint --reports=no --errors-only qp
+        pylint --reports=no --errors-only qit
         # stp the build if there are a lot of messages
-        pylint --reports=no --fail-under=9.5 qp
+        pylint --reports=no --fail-under=9.5 qit
         # exit-zero treats all errors as warnings.
-        pylint --exit-zero qp
+        pylint --exit-zero qit
     - name: Test with pytest
       run: |
-        python -m pytest --cov=./qp --cov-report=xml tests
+        python -m pytest --cov=./qit --cov-report=xml tests
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       with:

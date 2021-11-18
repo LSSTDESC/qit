@@ -9,17 +9,20 @@ from qp.hist_pdf import hist
 from qp.interp_pdf import interp
 
 
-def get_posterior_grid(ens, vals, prior=None):
+def get_posterior_grid(ens, vals, prior=None, obs_vals=None):
     """Evaluate all of the PFDs in an ensemble at a set of values, and optionally multiply them over by a prior
 
     Parameters
     ----------
     ens : `qp.Ensemble`
-        The ensemble
+        The estimator ensemble, should have shape (npdf).  
+        Where ndfs are the number of estimator bins (i.e., in true space)
     vals : array_like (n)
-        The values at which to evaluate the ensemble PDFs and the prior
+        The grid of data values to consider (i.e., in observed space)
     prior : `qp.Ensemble` or `None`
         The prior, using None will result in no multiplication, equivalent to a flat prior
+    obs_vals : array_like (npdf) or `None`
+        The grid of values (in true space) to evalaute the prior at
 
     Returns
     -------
@@ -28,9 +31,15 @@ def get_posterior_grid(ens, vals, prior=None):
     """
     post_grid = ens.pdf(vals)
     if prior is not None:
-        prior_vals = np.squeeze(prior.pdf(vals))
-        post_grid = post_grid * prior_vals
-    return post_grid
+        prior_vals = np.squeeze(prior.pdf(obs_vals))
+        print(prior_vals.shape)
+        top_grid = post_grid.T * prior_vals
+    else: 
+        top_grid = post_grid.T
+    print(top_grid.shape)
+    bot = np.sum(top_grid, axis=1)
+    post_grid = top_grid.T / bot
+    return post_grid.T
 
 
 def make_ensemble_for_posterior_hist(post_grid, z_grid, z_meas_bin):  #pragma: no cover

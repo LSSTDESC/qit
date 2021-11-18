@@ -84,7 +84,11 @@ class Estimator:
         post_grid : array_like (npdf, n)
            The grid of Posterior values
         """
-        return get_posterior_grid(self._ensemble, x_loc, prior)
+        pdf_grid = self._ensemble.pdf(x_loc)
+        pdf_grid = np.where(np.isnan(pdf_grid), 0, pdf_grid)
+        flat_post = Ensemble(hist, data=dict(bins=self._axes[0].bins, pdfs=pdf_grid.T))
+        out_grid = 0.5*(self._axes[0].bins[1:] + self._axes[0].bins[0:-1])
+        return get_posterior_grid(flat_post, out_grid, prior, x_loc)
 
     def get_sampler(self, x_loc):
         """ Construct a PDF sampler as an ensemble
@@ -123,10 +127,8 @@ class Estimator:
             The posterior assuming a flat prior
         """
         x_eval = 0.5*(x_loc[1:] + x_loc[:-1])
-        post_grid_flat = self._ensemble.pdf(x_eval).T
-        bins = self._axes[axis].bins
-        flat_post = Estimator([x_loc], Ensemble(hist, data=dict(bins=bins, pdfs=post_grid_flat)))
+        flat_post = self.flat_posterior(self._axes[axis].bins)
         post_grid = flat_post.get_posterior_grid(x_eval, prior)
-        idx, mask = flat_post.get_indices(samples)
+        idx, mask = self._axes[axis].get_indices(samples)
         idx = idx[mask]
         return Ensemble(interp, data=dict(xvals=x_eval, yvals=post_grid[idx]))
